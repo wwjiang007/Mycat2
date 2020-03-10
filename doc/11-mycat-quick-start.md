@@ -41,26 +41,59 @@ replicas:
   - name: repli                      # 复制组 名称   必须唯一
     repType: SINGLE_NODE           # 复制类型
     switchType: SWITCH              # 切换类型
-    balanceName: BalanceLeastActive   #负载均衡算法名称
-    balanceType: BALANCE_ALL #负载均衡类型
-    mysqls:
-      - name: mytest3306              # mysql 主机名
+    readBalanceName: BalanceLeastActive   #负载均衡算法名称
+    readbalanceType: BALANCE_ALL #负载均衡类型
+    datasources:
+      - name: mytest3306b              # mysql 主机名
         ip: 127.0.0.1               # i
         port: 3306                  # port
         user: root                  # 用户名
-        password: 123      # 密码
+        password: 123456      # 密码
         minCon: 1                   # 最小连接
         maxCon: 1000                  # 最大连接
+        maxRetryCount: 3            # 连接重试次数
         weight: 3            # 权重
+        dbType: mysql
+        initDb: db2			 #物理库的名称
+      - name: mytest3307b              # mysql 主机名
+        ip: 127.0.0.1               # i
+        port: 3306                  # port
+        user: root                  # 用户名
+        password: 123456      # 密码
+        minCon: 1                   # 最小连接
+        maxCon: 1000                  # 最大连接
+        maxRetryCount: 3            # 连接重试次数
+        weight: 3            # 权重
+        initDb: db2			 #物理库的名称
 ```
 
 ### 步骤3
 
-修改schema.yaml,dataNode.yaml,以下两个架构选一个配置
+修改schema.yaml,deafultDatabase.yaml,以下两个架构选一个配置
 
-#### 负载均衡
 
-schemas - name是逻辑库的名称
+
+#### 读写分离配置1
+
+mycat.yaml
+
+设置commandDispatcherClass: io.mycat.command.ReadAndWriteSeparationHandler
+
+```yaml
+proxy:
+  ip: 0.0.0.0
+  port: 8066
+  bufferPoolPageSize: 4194304     
+  bufferPoolChunkSize: 8192     
+  bufferPoolPageNumber: 2      
+  reactorNumber: 2      
+  commandDispatcherClass:  io.mycat.command.ReadAndWriteSeparationHandler
+  proxyBeanProviders: io.mycat.MycatProxyBeanProviders
+```
+
+defaultSchemaName是读写分离的物理库的名称
+
+schemas - name是物理库的名称
 
 dataNode的database是mysql物理库的名称
 
@@ -69,14 +102,14 @@ replica是上述的复制组的名字
 schema.yaml
 
 ```yaml
+defaultSchemaName: db1
 schemas:
   - name: db1
     schemaType: DB_IN_ONE_SERVER
     defaultDataNode: dn1
-    tables:
 ```
 
-dataNode.yaml
+deafultDatabase.yaml
 
 ```yaml
 dataNodes:
@@ -86,9 +119,129 @@ dataNodes:
   replica: repli
 ```
 
+replica.yaml
+
+修改下面关键点
+
+```yaml
+replicas:
+  - name: repli                      # 复制组 名称   必须唯一
+    repType: MASTER_SLAVE           # 复制类型 读写分离
+```
+
+数据源添加默认物理库的名称
+
+```yaml
+- name: mytest3307b              # mysql 主机名
+  ip: 127.0.0.1               # i
+  port: 3306                  # port
+  user: root                  # 用户名
+  password: 123456      # 密码
+  minCon: 1                   # 最小连接
+  maxCon: 1000                  # 最大连接
+  maxRetryCount: 3            # 连接重试次数
+  weight: 3            # 权重
+  initDb: db2          #物理库的名称
+```
+
+启动mycat即可
+
+
+
+
+
+#### 读写分离配置2
+
+mycat.yaml
+
+设置commandDispatcherClass: io.mycat.command.HybridProxyCommandHandler
+
+```yaml
+proxy:
+  ip: 0.0.0.0
+  port: 8066
+  bufferPoolPageSize: 4194304     
+  bufferPoolChunkSize: 8192     
+  bufferPoolPageNumber: 2      
+  reactorNumber: 2      
+  commandDispatcherClass: io.mycat.command.HybridProxyCommandHandler
+  proxyBeanProviders: io.mycat.MycatProxyBeanProviders
+```
+
+
+
+defaultSchemaName是默认逻辑库的名称
+
+schemas - name是逻辑库的名称,不必与实际的物理库名称一致
+
+dataNode的database是mysql物理库的名称
+
+replica是上述的复制组的名字
+
+schema.yaml
+
+```yaml
+defaultSchemaName: DB_IN_ONE_SERVER_3306
+schemas:
+  - name: db1
+    schemaType: DB_IN_ONE_SERVER
+    defaultDataNode: dn1
+    tables:
+```
+
+deafultDatabase.yaml
+
+```yaml
+dataNodes:
+
+- name: dn1
+  database: db1
+  replica: repli
+```
+
+
+
+replica.yaml
+
+修改下面关键点
+
+```yaml
+replicas:
+  - name: repli                      # 复制组 名称   必须唯一
+    repType: MASTER_SLAVE           # 复制类型 读写分离
+    initDB: DB #物理库的名称
+```
+
+数据源添加默认物理库的名称
+
+```yaml
+- name: mytest3307b              # mysql 主机名
+  ip: 127.0.0.1               # i
+  port: 3306                  # port
+  user: root                  # 用户名
+  password: 123456      # 密码
+  minCon: 1                   # 最小连接
+  maxCon: 1000                  # 最大连接
+  maxRetryCount: 3            # 连接重试次数
+  weight: 3            # 权重
+  initDb: db2          #物理库的名称
+```
+
+启动mycat即可
+
+
+
+
+
 #### 在逻辑库聚合多个mysql服务器的物理表
 
 schema.yaml
+
+mycat.yaml
+
+设置commandDispatcherClass: io.mycat.command.HybridProxyCommandHandler
+
+
 
 ```yaml
 schemas:
@@ -99,7 +252,7 @@ schemas:
         dataNodes: dn1
       - name: travelrecord2
         dataNodes: dn2
-dataNode.yaml
+deafultDatabase.yaml
 
 dataNodes:
   - name: dn1
@@ -111,6 +264,8 @@ dataNodes:
 ```
 
 
+
+更多配置请看mycat 2.0-schema(04-mycat-schema.md)
 
 
 

@@ -1,9 +1,25 @@
+/**
+ * Copyright (C) <2020>  <jamie12221>
+ *
+ * This program is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+ * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this program.  If
+ * not, see <http://www.gnu.org/licenses/>.
+ */
 package io.mycat.proxy.buffer;
 
 import io.mycat.MycatException;
 import io.mycat.buffer.BufferPool;
-import io.mycat.proxy.reactor.ReactorEnvThread;
-import io.mycat.proxy.session.MycatSession;
+import io.mycat.logTip.MycatLogger;
+import io.mycat.logTip.MycatLoggerFactory;
+import io.mycat.proxy.reactor.SessionThread;
+
 import java.nio.ByteBuffer;
 
 /**
@@ -11,7 +27,8 @@ import java.nio.ByteBuffer;
  */
 public class CrossSwapThreadBufferPool {
 
-  private volatile ReactorEnvThread source;
+  final static MycatLogger LOGGER = MycatLoggerFactory.getLogger(CrossSwapThreadBufferPool.class);
+  private volatile SessionThread source;
   private BufferPool bufferPool;
 
   public CrossSwapThreadBufferPool(
@@ -20,38 +37,31 @@ public class CrossSwapThreadBufferPool {
   }
 
   public ByteBuffer allocate(int size) {
-    if (source != null && source != Thread.currentThread()) {
-      throw new MycatException("Illegal state");
-    }
+    check();
     return bufferPool.allocate(size);
   }
 
   public ByteBuffer allocate(byte[] bytes) {
-    Thread thread = Thread.currentThread();
-    if (source != null && source != thread) {
-      System.out.println();
-    }
+    check();
     return bufferPool.allocate(bytes);
+  }
+
+  private void check() {
+    if (source != null && source != Thread.currentThread()) {
+      LOGGER.error("{}", Thread.currentThread());
+      throw new MycatException("Illegal state");
+    }
   }
 
   public void recycle(ByteBuffer theBuf) {
     bufferPool.recycle(theBuf);
   }
 
-  public void bindSource(ReactorEnvThread source) {
-    System.out.println("----------------------------------------"+source);
+  public void bindSource(SessionThread source) {
     this.source = source;
   }
-//
-//  public void unbindSource(ReactorEnvThread source) {
-////    if (this.source == source) {
-////      this.source = null;
-////    } else {
-////      throw new MycatException("unsupport operation");
-////    }
-//  }
 
-  public ReactorEnvThread getSource() {
+  public SessionThread getSource() {
     return source;
   }
 }

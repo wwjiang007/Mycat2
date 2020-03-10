@@ -1,3 +1,17 @@
+/**
+ * Copyright (C) <2020>  <jamie12221>
+ *
+ * This program is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+ * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this program.  If
+ * not, see <http://www.gnu.org/licenses/>.
+ */
 package io.mycat.proxy.handler.backend;
 
 import io.mycat.beans.mysql.packet.EOFPacket;
@@ -8,7 +22,6 @@ import io.mycat.proxy.MySQLPacketUtil;
 import io.mycat.proxy.callback.ResultSetCallBack;
 import io.mycat.proxy.session.MySQLClientSession;
 import io.mycat.proxy.session.MycatSession;
-import io.mycat.proxy.session.ProcessState;
 
 public class PrepareStmtTask implements ResultSetHandler {
 
@@ -90,14 +103,16 @@ public class PrepareStmtTask implements ResultSetHandler {
   @Override
   public void onFirstError(ErrorPacketImpl packet) {
     if (proxy) {
-      mycat.writeErrorEndPacket(packet);
+      mycat.setLastMessage(packet.getErrorMessageString());
+      mycat.setLastErrorCode(packet.getErrorCode());
+      mycat.writeErrorEndPacketBySyncInProcessError();
     }
   }
 
   @Override
   public void onFinishedCollect(MySQLClientSession mysql) {
     if (proxy) {
-      mycat.setResponseFinished(ProcessState.DONE);
+      //mycat.setResponseFinished(ProcessState.DONE);
     }
   }
 

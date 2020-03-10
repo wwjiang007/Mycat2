@@ -14,25 +14,23 @@
  */
 package io.mycat.proxy.session;
 
-import io.mycat.ProxyBeanProviders;
-import io.mycat.annotations.NoExcept;
 import io.mycat.buffer.BufferPool;
 import io.mycat.command.CommandDispatcher;
 import io.mycat.logTip.MycatLogger;
 import io.mycat.logTip.MycatLoggerFactory;
-import io.mycat.proxy.ProxyRuntime;
 import io.mycat.proxy.handler.front.MySQLClientAuthHandler;
 import io.mycat.proxy.monitor.MycatMonitor;
-import io.mycat.proxy.reactor.MycatReactorThread;
+import io.mycat.proxy.reactor.SessionThread;
 import io.mycat.proxy.session.SessionManager.FrontSessionManager;
+
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * 集中管理MySQL LocalInFileSession 是在mycat proxy中,唯一能够创建mysql session以及关闭mysqlsession的对象
@@ -44,24 +42,20 @@ public class MycatSessionManager implements FrontSessionManager<MycatSession> {
 
   final static MycatLogger LOGGER = MycatLoggerFactory.getLogger(AbstractSession.class);
   final LinkedList<MycatSession> mycatSessions = new LinkedList<>();
-  final ProxyRuntime runtime;
-  private final ProxyBeanProviders providers;
+  private final Function<MycatSession,CommandDispatcher> function;
 
-  public MycatSessionManager(ProxyRuntime runtime,
-      ProxyBeanProviders providers) {
-    this.runtime = runtime;
-    this.providers = providers;
+  public MycatSessionManager(Function<MycatSession,CommandDispatcher> function) {
+    this.function = function;
   }
 
 
   @Override
-  @NoExcept
+
   public List<MycatSession> getAllSessions() {
     return new ArrayList<>(mycatSessions);
   }
 
   @Override
-  @NoExcept
   public int currentSessionCount() {
     return mycatSessions.size();
   }
@@ -70,7 +64,6 @@ public class MycatSessionManager implements FrontSessionManager<MycatSession> {
    * 调用该方法的时候 mycat session已经关闭了
    */
   @Override
-  @NoExcept
   public void removeSession(MycatSession mycat, boolean normal, String reason) {
     try {
       MycatMonitor.onCloseMycatSession(mycat, normal, reason);
@@ -83,19 +76,16 @@ public class MycatSessionManager implements FrontSessionManager<MycatSession> {
 
 
   @Override
-  @NoExcept
   public void acceptNewSocketChannel(Object keyAttachement, BufferPool bufPool,
       Selector nioSelector, SocketChannel frontChannel) throws IOException {
-    MySQLClientAuthHandler mySQLClientAuthHandler = new MySQLClientAuthHandler();
-    MycatSession mycat = new MycatSession(runtime.genSessionId(), bufPool,
+    MySQLClientAuthHandler mySQLClientAuthHandler = new MySQLClientAuthHandler(this);
+    MycatSession mycat = new MycatSession(SessionManager.nextSessionId(), bufPool,
         mySQLClientAuthHandler, this);
-    CommandDispatcher commandDispatcher = providers
-        .createCommandDispatcher(runtime, mycat);
-    mycat.setCommandHandler(commandDispatcher);
+
 
     //用于monitor监控获取session
-    MycatReactorThread thread = (MycatReactorThread) Thread.currentThread();
-    thread.getReactorEnv().setCurSession(mycat);
+    SessionThread thread = (SessionThread) Thread.currentThread();
+    thread.setCurSession(mycat);
     mySQLClientAuthHandler.setMycatSession(mycat);
     try {
       mycat.register(nioSelector, frontChannel, SelectionKey.OP_READ);
@@ -106,5 +96,9 @@ public class MycatSessionManager implements FrontSessionManager<MycatSession> {
       MycatMonitor.onAuthHandlerWriteException(mycat, e);
       mycat.close(false, e);
     }
+  }
+
+  public void initCommandDispatcher(MycatSession session){
+    session.setCommandHandler(function.apply(session));
   }
 }

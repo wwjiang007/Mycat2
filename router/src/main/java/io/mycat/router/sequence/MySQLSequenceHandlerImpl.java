@@ -1,15 +1,30 @@
+/**
+ * Copyright (C) <2020>  <chen junwen>
+ * <p>
+ * This program is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ * <p>
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+ * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ * <p>
+ * You should have received a copy of the GNU General Public License along with this program.  If
+ * not, see <http://www.gnu.org/licenses/>.
+ */
 package io.mycat.router.sequence;
 
 import io.mycat.MycatException;
+import io.mycat.api.MySQLAPI;
+import io.mycat.api.MySQLAPIRuntime;
+import io.mycat.api.callback.MySQLAPIExceptionCallback;
+import io.mycat.api.callback.MySQLAPISessionCallback;
+import io.mycat.api.callback.MySQLJobCallback;
+import io.mycat.api.collector.OneResultSetCollector;
 import io.mycat.beans.mysql.packet.ErrorPacket;
 import io.mycat.logTip.MycatLogger;
 import io.mycat.logTip.MycatLoggerFactory;
-import io.mycat.mysqlapi.MySQLAPI;
-import io.mycat.mysqlapi.MySQLAPIRuntime;
-import io.mycat.mysqlapi.callback.MySQLAPIExceptionCallback;
-import io.mycat.mysqlapi.callback.MySQLAPISessionCallback;
-import io.mycat.mysqlapi.callback.MySQLJobCallback;
-import io.mycat.mysqlapi.collector.OneResultSetCollector;
+
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -19,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class MySQLSequenceHandlerImpl implements SequenceHandler {
+public class MySQLSequenceHandlerImpl implements SequenceHandler<MySQLAPIRuntime> {
 
   private static final MycatLogger LOGGER = MycatLoggerFactory
       .getLogger(MySQLSequenceHandlerImpl.class);

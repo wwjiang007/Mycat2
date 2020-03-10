@@ -1,11 +1,25 @@
+/**
+ * Copyright (C) <2020>  <chen junwen>
+ *
+ * This program is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+ * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this program.  If
+ * not, see <http://www.gnu.org/licenses/>.
+ */
 package io.mycat.proxy.monitor;
 
 import io.mycat.proxy.handler.backend.MySQLSynContext;
-import io.mycat.proxy.handler.backend.MySQLSynContextImpl;
 import io.mycat.proxy.packet.MySQLPayloadType;
 import io.mycat.proxy.session.MySQLClientSession;
 import io.mycat.proxy.session.MycatSession;
 import io.mycat.proxy.session.Session;
+
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 
@@ -87,7 +101,7 @@ public abstract class AbstractMonitorCallback implements MycatMonitorCallback{
   }
 
   @Override
-  public void onGettingBackend(Session session, String dataNode, Exception e) {
+  public void onGettingBackend(Session session, String replicaName, String defaultDataBase, Exception e) {
 
   }
 
@@ -222,13 +236,18 @@ public abstract class AbstractMonitorCallback implements MycatMonitorCallback{
 
   }
 
+  @Override
+  public void onRouteSQL(Session session, String replicaName, String defaultDataBase, String sql) {
+
+  }
+
 
   public void onCloseMysqlSession(MySQLClientSession session,boolean noraml,String reson) {
 
   }
 
 
-  public void onRouteSQLResult(Session session, String dataNodeName, String replicaName,
+  public void onRouteSQLResult(Session session, String dataNodeName, String defaultDataBase,
       String dataNode,
       byte[] payload) {
 
@@ -599,7 +618,14 @@ public abstract class AbstractMonitorCallback implements MycatMonitorCallback{
   }
 
   @Override
-  public void onRouteSQL(Session session, String dataNodeName, String sql) {
+  public void onRouteSQL(MycatSession mycat, String dataSourceName, String sql) {
+
+  }
+
+
+  @Override
+  public void onRouteSQLResult(Session session, String dataNodeName, String defaultDataBase,
+      String dataSource, String sql) {
 
   }
 }
